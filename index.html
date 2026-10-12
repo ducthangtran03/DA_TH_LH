@@ -8,7 +8,7 @@
 <style>
 :root{--ink:#7a2f5c;--pk:#ff7eb6;--pk2:#ff9a8b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;margin:0;overflow:hidden;color:var(--ink);font-family:"Baloo 2",ui-rounded,"Nunito","Segoe UI",system-ui,sans-serif;
+html,body{height:100%;height:100dvh;margin:0;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-text-size-adjust:100%;color:var(--ink);font-family:"Baloo 2",ui-rounded,"Nunito","Segoe UI",system-ui,sans-serif;
   background:linear-gradient(180deg,#6f63c9 0%,#a58be0 22%,#f0a7d6 48%,#ffd0c4 72%,#ffeec9 100%)}
 canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:manipulation;z-index:1}
 
@@ -167,6 +167,29 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 .bw{display:block;animation:bflap .28s ease-in-out infinite alternate;filter:drop-shadow(0 0 6px rgba(255,255,255,.9))}
 @keyframes bflap{from{transform:scaleX(1) rotate(-8deg)}to{transform:scaleX(.35) rotate(8deg)}}
 .flower{filter:drop-shadow(0 0 7px rgba(255,255,200,.85))}
+
+/* ---------- tối ưu cho điện thoại (màn hình dọc) ---------- */
+#stage{padding-top:calc(env(safe-area-inset-top,0px) + 46px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 124px)}
+#bubble{max-width:min(90vw,430px);min-height:84px;padding:14px 20px}
+#line{font-size:clamp(20px,min(5.8vw,3.7dvh),34px)}
+#bear{width:min(58vw,270px,30dvh);margin-top:24px}
+#btns{bottom:calc(env(safe-area-inset-bottom,0px) + 46px);flex-wrap:wrap;gap:10px 14px;padding:0 14px}
+@media (max-width:430px){
+  button{font-size:18px;padding:10px 22px}
+  #no{font-size:15px;padding:8px 16px}
+  #again{font-size:12px;padding:4px 12px}
+  .castle{width:46vw;bottom:20vh}
+  .moon{right:4vw}
+}
+@media (max-width:350px){
+  button{font-size:16px;padding:9px 16px}
+  #no{font-size:13.5px;padding:7px 12px}
+}
+@media (max-height:560px){
+  #stage{padding-top:calc(env(safe-area-inset-top,0px) + 38px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 104px)}
+  #bubble{min-height:70px;padding:10px 16px}
+  #bear{margin-top:20px}
+}
 </style>
 </head>
 <body>
@@ -333,8 +356,10 @@ function P(x, y, z, ry, rx){
   const k = F / d; return { x: W / 2 + X * k, y: H / 2 + Y * k, k, z: Z };
 }
 function resize(){
+  const pw = W;
   dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
   cv.width = W * dpr; cv.height = H * dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (items.length && pw === W) return; // thanh địa chỉ trình duyệt co giãn: không dựng lại, tránh giật
   const n = Math.round(Math.min(46, Math.max(24, W * H / 15000)));
   items = Array.from({length: n}, (_, i) => ({ t: i % 6 === 5 ? BUB[(R() * BUB.length) | 0] : EM[(R() * EM.length) | 0], bub: i % 6 === 5,
     x: (R() - .5) * 2200, y: (R() - .5) * 1500, z: -250 + R() * 1300, s: .8 + R() * .7, ph: R() * 6.28, vy: .15 + R() * .35, vx: (R() - .5) * .3 })).sort((a, b) => b.z - a.z);
@@ -426,15 +451,19 @@ async function play(){
 function dodge(){
   noCount++;
   no.classList.add('run');
-  const bw = no.offsetWidth, bh = no.offsetHeight, m = 12;
-  no.style.left = (m + R() * (W - bw - m * 2)) + 'px';
-  no.style.top = (m + R() * (H - bh - m * 2)) + 'px';
+  const bw = no.offsetWidth, bh = no.offsetHeight, m = 12, yr = yes.getBoundingClientRect();
+  let nx, ny;
+  for (let k = 0; k < 20; k++){ // chọn chỗ không đè lên nút "Đồng ý"
+    nx = m + R() * Math.max(0, W - bw - m * 2); ny = m + R() * Math.max(0, H - bh - m * 2);
+    if (nx > yr.right + 8 || nx + bw < yr.left - 8 || ny > yr.bottom + 8 || ny + bh < yr.top - 8) break;
+  }
+  no.style.left = nx + 'px'; no.style.top = ny + 'px';
   no.textContent = CONFIG.noTexts[(noCount - 1) % CONFIG.noTexts.length];
-  yesScale = Math.min(1.7, yesScale + .1); yes.style.transform = `scale(${yesScale})`;
+  yesScale = Math.min(W < 480 ? 1.4 : 1.7, yesScale + .1); yes.style.transform = `scale(${yesScale})`;
   bear.classList.add('talk'); setTimeout(() => bear.classList.remove('talk'), 400);
   burst(bw / 2 + parseFloat(no.style.left), bh / 2 + parseFloat(no.style.top), 4, ['💔','🥺','💦']);
 }
-no.addEventListener('pointerenter', dodge);
+no.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') dodge(); }); // cảm ứng chỉ né khi chạm, tránh đếm 2 lần
 no.addEventListener('pointerdown', e => { e.preventDefault(); dodge(); });
 no.addEventListener('click', e => e.preventDefault());
 
