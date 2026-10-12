@@ -173,7 +173,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 #bubble{max-width:min(90vw,430px);min-height:84px;padding:14px 20px}
 #line{font-size:clamp(20px,min(5.8vw,3.7dvh),34px)}
 #bear{width:min(58vw,270px,30dvh);margin-top:24px}
-#btns{bottom:calc(env(safe-area-inset-bottom,0px) + 46px);flex-wrap:wrap;gap:10px 14px;padding:0 14px}
+#btns{bottom:calc(env(safe-area-inset-bottom,0px) + 46px);flex-wrap:wrap;gap:12px 22px;padding:0 14px}
 @media (max-width:430px){
   button{font-size:18px;padding:10px 22px}
   #no{font-size:15px;padding:8px 16px}
@@ -448,7 +448,9 @@ async function play(){
 }
 
 // ---------- nút ----------
+let lastDodge = 0;
 function dodge(){
+  lastDodge = performance.now();
   noCount++;
   no.classList.add('run');
   const bw = no.offsetWidth, bh = no.offsetHeight, m = 12, yr = yes.getBoundingClientRect();
@@ -459,15 +461,17 @@ function dodge(){
   }
   no.style.left = nx + 'px'; no.style.top = ny + 'px';
   no.textContent = CONFIG.noTexts[(noCount - 1) % CONFIG.noTexts.length];
-  yesScale = Math.min(W < 480 ? 1.4 : 1.7, yesScale + .1); yes.style.transform = `scale(${yesScale})`;
+  yesScale = Math.min(W < 480 ? 1.2 : 1.7, yesScale + .05); yes.style.transform = `scale(${yesScale})`;
   bear.classList.add('talk'); setTimeout(() => bear.classList.remove('talk'), 400);
   burst(bw / 2 + parseFloat(no.style.left), bh / 2 + parseFloat(no.style.top), 4, ['💔','🥺','💦']);
 }
 no.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') dodge(); }); // cảm ứng chỉ né khi chạm, tránh đếm 2 lần
-no.addEventListener('pointerdown', e => { e.preventDefault(); dodge(); });
+no.addEventListener('pointerdown', e => { e.preventDefault(); if (e.pointerType === 'mouse') dodge(); });
 no.addEventListener('click', e => e.preventDefault());
+no.addEventListener('touchstart', e => { e.preventDefault(); dodge(); }, { passive: false }); // chặn click giả sau khi chạm
 
-yes.addEventListener('click', async () => {
+yes.addEventListener('click', async e => {
+  if (performance.now() - lastDodge < 700) { e.preventDefault(); return; } // cú chạm "rơi" sang nút Đồng ý sau khi nút kia né
   running++; const id = running, ok = () => id === running;
   btns.classList.remove('on'); bear.classList.add('happy');
   for (let k = 0; k < 6; k++) setTimeout(() => burst(R() * W, H * (.2 + R() * .5), 14, ['💖','💗','🎉','✨','🌸','🥰','🎀','🍓','💕']), k * 280);
